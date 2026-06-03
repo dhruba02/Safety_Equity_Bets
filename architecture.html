@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Safe Equity Bets — Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: #fff; padding: 32px; }
+
+  .diagram { width: 100%; max-width: 960px; margin: 0 auto; }
+  .title { font-size: 20px; font-weight: bold; color: #1F4E79; text-align: center; margin-bottom: 28px; letter-spacing: 0.5px; }
+
+  .lane { display: flex; align-items: stretch; margin-bottom: 10px; gap: 8px; }
+  .lane-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 10px;
+    font-weight: bold;
+    color: #fff;
+    padding: 8px 6px;
+    border-radius: 6px;
+    min-width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .lane-content { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 8px; }
+
+  .lane-source .lane-label { background: #555; }
+  .lane-source .lane-content { background: #f5f5f5; border: 1px solid #ddd; }
+  .lane-pipeline .lane-label { background: #2E75B6; }
+  .lane-pipeline .lane-content { background: #EBF3FB; border: 1px solid #BDD7EE; }
+  .lane-storage .lane-label { background: #1F4E79; }
+  .lane-storage .lane-content { background: #DEEAF1; border: 1px solid #9DC3E6; }
+  .lane-auth .lane-label { background: #7B5EA7; }
+  .lane-auth .lane-content { background: #F3EEF9; border: 1px solid #C5ADE6; }
+  .lane-app .lane-label { background: #375623; }
+  .lane-app .lane-content { background: #E2EFDA; border: 1px solid #A9D18E; }
+  .lane-user .lane-label { background: #833C0B; }
+  .lane-user .lane-content { background: #FCE4D6; border: 1px solid #F4B183; }
+
+  .box {
+    background: #fff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: center;
+    min-width: 100px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #ddd;
+  }
+  .box .icon { font-size: 20px; display: block; margin-bottom: 3px; }
+  .box .name { font-size: 11px; font-weight: bold; color: #1F4E79; }
+  .box .sub { font-size: 10px; color: #666; margin-top: 2px; }
+
+  .arrow { font-size: 18px; color: #999; flex-shrink: 0; display: flex; align-items: center; }
+  .arrow-label { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+  .arrow-label .arr { font-size: 18px; color: #999; }
+  .arrow-label .lbl { font-size: 9px; color: #888; margin-top: 1px; white-space: nowrap; }
+
+  .delta-group { display: flex; gap: 6px; align-items: center; }
+  .delta-box { background: #fff; border: 1px solid #9DC3E6; border-radius: 6px; padding: 6px 10px; text-align: center; min-width: 90px; }
+  .delta-box .layer { font-size: 10px; font-weight: bold; color: #1F4E79; }
+  .delta-box .desc { font-size: 9px; color: #666; margin-top: 1px; }
+  .delta-arrow { font-size: 14px; color: #9DC3E6; }
+
+  .spacer { flex: 1; }
+  .env-badge { background: #FFF2CC; border: 1px solid #FFD966; border-radius: 4px; padding: 3px 8px; font-size: 9px; color: #7F6000; font-weight: bold; white-space: nowrap; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #555; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="diagram">
+  <div class="title">Safe Equity Bets — System Architecture</div>
+
+  <div class="lane lane-source">
+    <div class="lane-label">Source</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">📊</span><div class="name">Yahoo Finance</div><div class="sub">yfinance API</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">501 tickers</span></div>
+      <div class="box"><span class="icon">🗂️</span><div class="name">niftystocks</div><div class="sub">Nifty 500 list</div></div>
+      <div class="spacer"></div>
+      <div class="env-badge">⏱ 5–8 min fetch · 0.5s sleep / ticker</div>
+    </div>
+  </div>
+
+  <div class="lane lane-pipeline">
+    <div class="lane-label">Pipeline</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">📓</span><div class="name">Notebook</div><div class="sub">Dev / exploration</div></div>
+      <div class="arrow">→</div>
+      <div class="box"><span class="icon">🐍</span><div class="name">pipeline.py</div><div class="sub">Production logic</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">RUN_MODE: PIPELINE</span></div>
+      <div class="box"><span class="icon">⚙️</span><div class="name">3 Cleaning Rules</div><div class="sub">Percentile · Sparse · Fill</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">~47 stocks</span></div>
+      <div class="box"><span class="icon">📈</span><div class="name">5 Filter Metrics</div><div class="sub">PE · Margin · D/E · Upside · EPS</div></div>
+    </div>
+  </div>
+
+  <div class="lane lane-storage">
+    <div class="lane-label">Storage</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">🏢</span><div class="name">ADLS Gen2</div><div class="sub">stmyequitytracker</div></div>
+      <div class="arrow">→</div>
+      <div class="delta-group">
+        <div class="delta-box"><div class="layer">🥉 Raw Layer</div><div class="desc">33 cols · all stocks</div></div>
+        <div class="delta-arrow">→</div>
+        <div class="delta-box"><div class="layer">🥈 Enriched Layer</div><div class="desc">+5 derived metrics</div></div>
+        <div class="delta-arrow">→</div>
+        <div class="delta-box"><div class="layer">🥇 Cleaned Layer</div><div class="desc">~47 stocks · UI-ready</div></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="env-badge">Delta Lake · Append-only · schema_mode=merge</div>
+    </div>
+  </div>
+
+  <div class="lane lane-auth">
+    <div class="lane-label">Auth</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">🔐</span><div class="name">Service Principal</div><div class="sub">sp-equity-tracker</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">EnvironmentCredential</span></div>
+      <div class="box"><span class="icon">🔑</span><div class="name">Key Vault</div><div class="sub">kv-my-equity-tracker</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">adls-connection-string</span></div>
+      <div class="box"><span class="icon">🛡️</span><div class="name">RBAC Roles</div><div class="sub">KV Secrets User · Blob Contributor</div></div>
+      <div class="spacer"></div>
+      <div class="env-badge">Credentials via env vars · Never hardcoded</div>
+    </div>
+  </div>
+
+  <div class="lane lane-app">
+    <div class="lane-label">App</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">🐋</span><div class="name">Docker Image</div><div class="sub">safeequitybets ACR</div></div>
+      <div class="arrow">→</div>
+      <div class="box"><span class="icon">☁️</span><div class="name">Container Apps</div><div class="sub">safe-equity-bets</div></div>
+      <div class="arrow">→</div>
+      <div class="box"><span class="icon">🌐</span><div class="name">Streamlit UI</div><div class="sub">app.py · port 8501</div></div>
+      <div class="spacer"></div>
+      <div class="env-badge">Scales to zero · East US · min-replicas=0</div>
+    </div>
+  </div>
+
+  <div class="lane lane-user">
+    <div class="lane-label">User</div>
+    <div class="lane-content">
+      <div class="box"><span class="icon">🔒</span><div class="name">Password Gate</div><div class="sub">APP_PASSWORD env var</div></div>
+      <div class="arrow-label"><span class="arr">→</span><span class="lbl">authenticated</span></div>
+      <div class="box"><span class="icon">⟳</span><div class="name">Load Latest</div><div class="sub">Read cleaned layer</div></div>
+      <div class="arrow">or</div>
+      <div class="box"><span class="icon">▶</span><div class="name">Run Pipeline</div><div class="sub">Trigger full fetch</div></div>
+      <div class="arrow">→</div>
+      <div class="box"><span class="icon">📋</span><div class="name">Results Table</div><div class="sub">47 stocks · commentary</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#555"></div> Data Source</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2E75B6"></div> Pipeline</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1F4E79"></div> Azure Storage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7B5EA7"></div> Authentication</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#375623"></div> Application</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#833C0B"></div> User Interaction</div>
+  </div>
+</div>
+</body>
+</html>
